@@ -33,20 +33,29 @@ class SequentialC2PC_SH { public:
 	SequentialC2PC_SH(NetIO * io, int party) {
 		this->party = party;
 		this->io = io;
-		
-		ote = new SHOTExtension<NetIO>(io);
+		if(io){
+			ote = new SHOTExtension<NetIO>(io);
+		}else {
+			ote=nullptr;
+		}
 		
 		if(party == ALICE) {
 			prg.random_block(&Delta, 1);
 			setLSB(Delta);
 			prg.random_block(label_const, NUM_CONST);
-			io->send_block(&label_const[0], 1);
+			if(io){
+				io->send_block(&label_const[0], 1);
+			}
 			block tmp = xorBlocks(label_const[1], Delta);
-			io->send_block(&tmp, 1);
+			if(io){
+				io->send_block(&tmp, 1);
+			}
 		}
 		else{
 			memset(&Delta, 0, sizeof(block));
-			io->recv_block(label_const, NUM_CONST);
+			if(io){
+				io->recv_block(label_const, NUM_CONST);
+			}
 		}
 	}
 
@@ -455,7 +464,7 @@ class SequentialC2PC_SH { public:
 		prp.permute_block(&H, 1);
 	}
 
-	void Hash(block &H, block a, uint64_t i) {
+	void Hash(block &H, block a, uint64_t i) const {
 		a = double_block(a);
 		H = xorBlocks(a, _mm_set_epi64x(4*i, 0ULL));
 		prp.permute_block(&H, 1);

@@ -18,8 +18,8 @@ find_package(Boost REQUIRED COMPONENTS program_options)
 set(TINYGARBLE_LIBRARIES ${TINYGARBLE_LIBRARIES} ${Boost_LIBRARIES})
 set(TINYGARBLE_DIRS ${TINYGARBLE_DIR} ${Boost_INCLUDE_DIRS})
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fconcepts")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fconcepts")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -fconcepts")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -fsanitize=address -fconcepts")
 
 
 # Remove warnings specifically for this project
@@ -43,6 +43,7 @@ add_exec(formatInOut)
 add_exec(readCircuitFile)
 add_exec(LeNet)
 add_exec(millionaire)
+add_exec(onehot_garble_test)
 
 configure_file("tinygarble/TinyGarble_config.h.in" "tinygarble/TinyGarble_config.h" @ONLY)
 
