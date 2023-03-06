@@ -42,9 +42,9 @@ struct One_Hot_Garble{
                 odd_temp=xorBlocks(odd_temp, hash_tree_for_1[level_idx][leaves_idx]);
                 print128_num("odd temp", odd_temp);
             }
-            printf("level %d, odd write to %lu even write to %lu\n",level_idx,level_text[level_idx]*2+1,level_text[level_idx]*2);
-            to_evaluator[level_text[level_idx]*2]=even_temp;
-            to_evaluator[level_text[level_idx]*2+1]=odd_temp;
+            printf("level %d, odd write to %lu even write to %lu\n",level_idx,level_text[level_idx]+1,level_text[level_idx]);
+            to_evaluator[level_text[level_idx]]=even_temp;
+            to_evaluator[level_text[level_idx]+1]=odd_temp;
         }
         block all_leaves_xor=hash_provider.Delta;
         int idx=0;
@@ -72,6 +72,7 @@ struct One_Hot_Garble{
         hash_tree_a_bar.resize(input_a.size());
         int missing_idx=0;
         for(int level_idx=1;level_idx<input_a.size();level_idx++){
+            fprintf(stderr, "level %d missing idx %d\n",level_idx,missing_idx);
             hash_tree_a_bar[level_idx].resize(1<<level_idx);
             //Fill entries on hash_tree_a_bar whose parent is not missing
             for (int leaves_idx=0; leaves_idx<hash_tree_a_bar[level_idx].size();leaves_idx++ ) {
@@ -83,8 +84,8 @@ struct One_Hot_Garble{
                 }
             }
             //Fill entires that is not on the path from the 1 leaf to root on this level
-            printf("level %d access gabler in %zu\n",level_idx,level_text[level_idx]*2+!clear_text_a[level_idx]);
-            auto garbler_text=xorBlocks(from_garbler[level_text[level_idx]*2+!clear_text_a[level_idx]],label[input_a[level_idx]]);
+            printf("level %d access gabler in %zu\n",level_idx,level_text[level_idx]+!clear_text_a[level_idx]);
+            auto garbler_text=xorBlocks(from_garbler[level_text[level_idx]+!clear_text_a[level_idx]],label[input_a[level_idx]]);
             print128_num("from garbler", garbler_text);
             for(int leaves_idx=!clear_text_a[level_idx];leaves_idx<hash_tree_a_bar[level_idx].size();leaves_idx+=2){
                 printf("xoring with %d\n",leaves_idx);
@@ -92,10 +93,10 @@ struct One_Hot_Garble{
                 garbler_text=xorBlocks(hash_tree_a[level_idx][leaves_idx],garbler_text);
                 print128_num("eval garbler temp", garbler_text);
             }
+            missing_idx*=2;
             hash_tree_a_bar[level_idx][missing_idx+!clear_text_a[level_idx]]=garbler_text;
             printf("fill a bar level %d, idx %d from generator text\n",level_idx,missing_idx+!clear_text_a[level_idx]);
             missing_idx+=clear_text_a[level_idx];
-            missing_idx*=2;
         }
         block all_leaves_xor=from_garbler[output_text[0]];
         for (auto& a : hash_tree_a.back()) {
@@ -104,7 +105,7 @@ struct One_Hot_Garble{
         for (auto& a : hash_tree_a_bar.back()) {
             all_leaves_xor=xorBlocks(all_leaves_xor, a);
         }
-        missing_idx/=2;
+        fprintf(stderr, "missing idx %d at the end\n",missing_idx);
         
         hash_tree_a_bar.back()[missing_idx]=all_leaves_xor;
         puts("Evaluator a bar tree");
