@@ -39,3 +39,5 @@ perf.data*
 *.nfs*
 tinygarble/TinyGarble_config.h
 .vscode*
+compile_commands.json
+.cache

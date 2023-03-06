@@ -12,12 +12,6 @@
 
 #include <inttypes.h>
 
-void print128_num(char* prefix, block var) 
-{
-    int64_t v64val[2];
-    memcpy(v64val, &var, sizeof(v64val));
-    printf("%s: %.16llx %.16llx\n",prefix, v64val[1], v64val[0]);
-}
 
 int main(int argc, char** argv) {
 
@@ -29,7 +23,7 @@ int main(int argc, char** argv) {
 	One_Hot_Garble dut{
 		std::vector<size_t>{0,1,2},
 		std::vector<size_t>{0,1,2},
-		std::vector<size_t>{3},
+		std::vector<size_t>{6},
 		out_label_idx
 	};	
 
@@ -41,6 +35,10 @@ int main(int argc, char** argv) {
 	eval_blocks[0]=xorBlocks(garble_blocks[0],hash_provider.Delta);
 	eval_blocks[1]=garble_blocks[1];
 	eval_blocks[2]=xorBlocks(garble_blocks[2],hash_provider.Delta);
+	puts("Garbler to eval");
+	for (int i=0; i<7; i++) {
+		print128_num("\t", garbler_to_eval[i]);
+	}
 	dut.eval(eval_blocks, std::vector<bool>{true,false,true},garbler_to_eval, hash_provider);
 	for (int i=0; i<11; i++) {
 		printf ("idx %d: \n"
