@@ -5,14 +5,48 @@
 #include <emp-ot/emp-ot.h>
 #include <vector>
 #include "./ggm_prf_tree.hpp"
+#include "emp-tool/utils/hash.h"
 struct One_Hot_Garble{
     std::vector<size_t> input_a;
+    std::vector<size_t> input_b;
     //even first odd secend
     std::vector<size_t> level_text;
     std::vector<size_t> output_text;
-    std::vector<size_t> output;
+    std::vector<std::vector<size_t>> output;
     // GT: to_evaluator
     // label: label for clear text value zero
+    void allocate_idx(int a_bw,int b_bw,int& next_label_idx, int& next_text_ex_idx){
+        input_a.resize(a_bw);
+        input_b.resize(b_bw);
+        output.resize(b_bw);
+        //input a wire label indexes
+        for (int a_idx=0; a_idx<a_bw; a_idx++) {
+            input_a[a_idx]=next_label_idx++;
+        }
+        //input b wire label indexes
+        for (int b_idx=0; b_idx<b_bw; b_idx++) {
+            input_b[b_idx]=next_label_idx++;
+        }
+        // The 2^|a|*|m| onehot outer product label index
+        for (int b_idx=0; b_idx<b_bw; b_idx++) {
+            output[b_idx].resize(1<<a_bw);
+            for (int a_n=0; a_n<(1<<a_bw); a_n++) {
+                output[b_idx][a_n]=next_label_idx++;
+            }
+        }
+        //The 2*(n-1) cipher text to complete the tree
+        level_text.resize(input_a.size());
+        for (int a_idx=1; a_idx<a_bw; a_idx++) {
+            level_text[a_idx]=next_text_ex_idx;
+            next_text_ex_idx+=2;
+        }
+        //The m cipher text to reconstruct output
+        output_text.resize(input_b.size());
+        for (int b_idx=0; b_idx<b_bw; b_idx++) {
+            output_text[b_idx]=next_text_ex_idx++;
+        }
+    }
+
     void garble(block* label, block* to_evaluator,const SequentialC2PC_SH& hash_provider){
         GGM_Hash_Tree_t hash_tree_for_0;
         compute_ggm_prf(label[input_a[0]], hash_tree_for_0, input_a.size(), hash_provider);
@@ -46,24 +80,27 @@ struct One_Hot_Garble{
             to_evaluator[level_text[level_idx]]=even_temp;
             to_evaluator[level_text[level_idx]+1]=odd_temp;
         }
-        block all_leaves_xor=hash_provider.Delta;
-        int idx=0;
-        for (auto& a : hash_tree_for_1.back()) {
-            all_leaves_xor=xorBlocks(all_leaves_xor, a);
-            label[output[idx]]=a;
-            idx++;
+        
+        for (int out_idx=0; out_idx<input_b.size(); out_idx++) {
+            to_evaluator[output_text[out_idx]]=label[input_b[out_idx]];
         }
-        for (auto& a : hash_tree_for_0.back()) {
-            all_leaves_xor=xorBlocks(all_leaves_xor, a);
-            label[output[idx]]=a;
-            idx++;
+        
+        std::vector<block> all_leaves(hash_tree_for_1.back());
+        all_leaves.insert(all_leaves.end(),hash_tree_for_0.back().begin(),hash_tree_for_0.back().end());
+        for (int leaves_idx=0;leaves_idx<all_leaves.size();leaves_idx++) {
+            for (int out_idx=0; out_idx<input_b.size(); out_idx++) {
+                block this_out;
+                hash_provider.Hash(this_out, all_leaves[leaves_idx], out_idx);
+                to_evaluator[output_text[out_idx]]=xorBlocks(to_evaluator[output_text[out_idx]], this_out );
+                label[output[out_idx][leaves_idx]]=this_out;
+            }    
         }
-        to_evaluator[output_text[0]]=all_leaves_xor;
+        
     }
     /*
     * label : evaluated wire labels
     */
-    void eval(block* label, std::vector<bool> clear_text_a ,block* from_garbler,const SequentialC2PC_SH& hash_provider){
+    void eval(block* label, const std::vector<bool>& clear_text_a ,block* from_garbler,const SequentialC2PC_SH& hash_provider){
         GGM_Hash_Tree_t hash_tree_a;
         GGM_Hash_Tree_t hash_tree_a_bar;
         compute_ggm_prf(label[input_a[0]], hash_tree_a, input_a.size(), hash_provider);
@@ -113,14 +150,22 @@ struct One_Hot_Garble{
         
         const auto& first_tree=clear_text_a[0]?hash_tree_a:hash_tree_a_bar;
         const auto& second_tree=clear_text_a[0]?hash_tree_a_bar:hash_tree_a;
-        int idx=0;
-        for (auto& a : first_tree.back()) {
-            label[output[idx]]=a;
-            idx++;
+        std::vector<block> last_level_leaves(first_tree.back());
+        missing_idx+=clear_text_a[0]<<(clear_text_a.size()-1);
+        last_level_leaves.insert(last_level_leaves.end(),second_tree.back().begin(),second_tree.back().end());
+        for (int leaves_idx=0; leaves_idx<last_level_leaves.size(); leaves_idx++) {
+            if(leaves_idx==missing_idx){
+                continue;
+            }
+            for (int out_idx=0; out_idx<input_b.size(); out_idx++) {
+                block this_out;
+                hash_provider.Hash(this_out, last_level_leaves[leaves_idx], out_idx);
+                from_garbler[output_text[out_idx]]=xorBlocks(from_garbler[output_text[out_idx]], this_out );
+                label[output[out_idx][leaves_idx]]=this_out;
+            }
         }
-        for (auto& a : second_tree.back()) {
-            label[output[idx]]=a;
-            idx++;
-        }
+        for (int out_idx=0; out_idx<input_b.size(); out_idx++) {
+            label[output[out_idx][missing_idx]]=xorBlocks(from_garbler[output_text[out_idx]], label[input_b[out_idx]] );
+        }        
     }
 };
