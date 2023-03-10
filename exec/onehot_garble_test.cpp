@@ -13,40 +13,13 @@
 
 #include <inttypes.h>
 
-std::vector<bool> to_bool_vec(int val, int size){
-	std::vector<bool> out(size);
-	for(int idx=0;idx<size;idx++){
-		out[idx]=val&1;
-		val>>=1;
+bool run(block* eval_blocks,block* garble_blocks,block* garbler_to_eval,SequentialC2PC_SH& hash_provider,General_One_Hot_Outer_Prod& dut, int test_a_val, int test_b_val){
+	for (int idx=0; idx<dut.input_a.size(); idx++) {
+		hash_provider.prg.random_block(&garble_blocks[dut.input_a[idx]]);
 	}
-	std::reverse(out.begin(), out.end());
-	return out;
-}
-std::vector<std::vector<bool>> identity_truth_table(int bw){
-    std::vector<std::vector<bool>> out(bw);
-	for (int bit_idx=0; bit_idx<bw; bit_idx++) {
-		out[bit_idx].resize(1<<bw);
+	for (int idx=0; idx<dut.input_b.size(); idx++) {
+		hash_provider.prg.random_block(&garble_blocks[dut.input_b[idx]]);
 	}
-	for (int leaf_idx=0; leaf_idx<1<<bw; leaf_idx++) {
-		auto temp=to_bool_vec(leaf_idx, bw);
-		for (int bit_idx=0; bit_idx<bw; bit_idx++) {
-			out[bit_idx][leaf_idx]=temp[bit_idx];
-		}
-	}
-	return out;
-}
-std::vector<std::vector<bool>> clear_text_outer_product(std::vector<bool> vect_n,std::vector<bool> vect_b){
-	std::vector<std::vector<bool>> out(vect_b.size());
-	for(int b_idx=0;b_idx<vect_b.size();b_idx++){
-		out[b_idx].resize(vect_n.size());
-		for (int n_idx=0; n_idx<vect_n.size(); n_idx++) {
-			out[b_idx][n_idx]=vect_n[n_idx]&&vect_b[b_idx];
-		}
-	}
-	return out;
-}
-
-bool run(block* eval_blocks,block* garble_blocks,block* garbler_to_eval,SequentialC2PC_SH& hash_provider,One_Hot_Garble& dut, int test_a_val, int test_b_val){
 	auto clear_text_a=to_bool_vec(test_a_val, dut.input_a.size());
 	auto clear_text_b=to_bool_vec(test_b_val, dut.input_b.size());
 	auto expected_out=clear_text_outer_product(clear_text_a, clear_text_b);
@@ -65,13 +38,13 @@ bool run(block* eval_blocks,block* garble_blocks,block* garbler_to_eval,Sequenti
 			eval_blocks[dut.input_b[bit_idx]]=garble_blocks[dut.input_b[bit_idx]];
 		}
 	}
-	puts("Garbler to eval");
+	/*puts("Garbler to eval");
 	for (int i=1; i<dut.level_text.size(); i++) {
 		printf("\t level %d: \n", i);
 		print128_num("\t\t", garbler_to_eval[dut.level_text[i]]);
 		print128_num("\t\t", garbler_to_eval[dut.level_text[i]+1]);
-	}
-	dut.eval(eval_blocks, clear_text_a,garbler_to_eval, hash_provider);
+	}*/
+	dut.eval(eval_blocks,garbler_to_eval, hash_provider);
 	bool mismatch=false;
 	for (int leaves_idx=0; leaves_idx<dut.input_a.size(); leaves_idx++) {
 		for(int output_idx=0; output_idx<dut.input_b.size();output_idx++){
@@ -102,11 +75,11 @@ bool run(block* eval_blocks,block* garble_blocks,block* garbler_to_eval,Sequenti
 int main(int argc, char** argv) {
 
 	SequentialC2PC_SH hash_provider(nullptr,ALICE);
-	One_Hot_Garble dut;
+	General_One_Hot_Outer_Prod dut;
 
 	int wire_label_idx=0, garbler_to_eval_idx=0;
 	int a_bw=3;	
-	dut.truth_table=identity_truth_table(a_bw);
+	//dut.truth_table=identity_truth_table(a_bw);
 	dut.allocate_idx(a_bw, 2, wire_label_idx, garbler_to_eval_idx);
 	block* eval_blocks=new block[wire_label_idx];
 	block* garble_blocks=new block[wire_label_idx];
