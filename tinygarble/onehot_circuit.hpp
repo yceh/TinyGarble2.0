@@ -12,7 +12,9 @@ struct One_Hot_Garble{
     //even first odd secend
     std::vector<size_t> level_text;
     std::vector<size_t> output_text;
-    std::vector<std::vector<size_t>> output;
+    std::vector<std::vector<size_t>> output;//[|b|][n]
+    // The truth table
+    std::vector<std::vector<bool>> truth_table;// [|n|] [1<<|a|]
     // GT: to_evaluator
     // label: label for clear text value zero
     void allocate_idx(int a_bw,int b_bw,int& next_label_idx, int& next_text_ex_idx){
@@ -27,6 +29,7 @@ struct One_Hot_Garble{
         for (int b_idx=0; b_idx<b_bw; b_idx++) {
             input_b[b_idx]=next_label_idx++;
         }
+        #ifdef ONE_HOT_OUTER_PRODUCT
         // The 2^|a|*|m| onehot outer product label index
         for (int b_idx=0; b_idx<b_bw; b_idx++) {
             output[b_idx].resize(1<<a_bw);
@@ -34,6 +37,14 @@ struct One_Hot_Garble{
                 output[b_idx][a_n]=next_label_idx++;
             }
         }
+        #else
+        for (int b_idx=0; b_idx<b_bw; b_idx++) {
+            output[b_idx].resize(truth_table.size());
+            for (int a_n=0; a_n<(truth_table.size()); a_n++) {
+                output[b_idx][a_n]=next_label_idx++;
+            }
+        }
+        #endif
         //The 2*(n-1) cipher text to complete the tree
         level_text.resize(input_a.size());
         for (int a_idx=1; a_idx<a_bw; a_idx++) {
@@ -86,16 +97,30 @@ struct One_Hot_Garble{
         }
         
         std::vector<block> all_leaves(hash_tree_for_1.back());
+        std::vector<std::vector<block>> temp_one_hot_output_label;
         all_leaves.insert(all_leaves.end(),hash_tree_for_0.back().begin(),hash_tree_for_0.back().end());
+        temp_one_hot_output_label.resize(all_leaves.size());
         for (int leaves_idx=0;leaves_idx<all_leaves.size();leaves_idx++) {
+            temp_one_hot_output_label[leaves_idx].resize(input_b.size());
             for (int out_idx=0; out_idx<input_b.size(); out_idx++) {
                 block this_out;
                 hash_provider.Hash(this_out, all_leaves[leaves_idx], out_idx);
                 to_evaluator[output_text[out_idx]]=xorBlocks(to_evaluator[output_text[out_idx]], this_out );
-                label[output[out_idx][leaves_idx]]=this_out;
+                temp_one_hot_output_label[leaves_idx][out_idx]=this_out;
             }    
         }
         
+        for (int output_idx=0; output_idx<input_b.size(); output_idx++) {
+            for (int out_n_idx=0; out_n_idx<truth_table.size(); out_n_idx++) {
+                block temp=zero_block();
+                for (int leaf_idx=0; leaf_idx<all_leaves.size(); leaf_idx++) {
+                    if (truth_table[out_n_idx][leaf_idx]) {
+                        temp=xorBlocks(temp, temp_one_hot_output_label[leaf_idx][output_idx]);
+                    }
+                }
+                label[output[output_idx][out_n_idx]]=temp;
+            }
+        }
     }
     /*
     * label : evaluated wire labels
@@ -153,7 +178,9 @@ struct One_Hot_Garble{
         std::vector<block> last_level_leaves(first_tree.back());
         missing_idx+=clear_text_a[0]<<(clear_text_a.size()-1);
         last_level_leaves.insert(last_level_leaves.end(),second_tree.back().begin(),second_tree.back().end());
+        std::vector<std::vector<block>> one_hot_outer_temp(last_level_leaves.size());
         for (int leaves_idx=0; leaves_idx<last_level_leaves.size(); leaves_idx++) {
+            one_hot_outer_temp[leaves_idx].resize(input_b.size());
             if(leaves_idx==missing_idx){
                 continue;
             }
@@ -161,11 +188,21 @@ struct One_Hot_Garble{
                 block this_out;
                 hash_provider.Hash(this_out, last_level_leaves[leaves_idx], out_idx);
                 from_garbler[output_text[out_idx]]=xorBlocks(from_garbler[output_text[out_idx]], this_out );
-                label[output[out_idx][leaves_idx]]=this_out;
+                one_hot_outer_temp[leaves_idx][out_idx]=this_out;
             }
         }
         for (int out_idx=0; out_idx<input_b.size(); out_idx++) {
-            label[output[out_idx][missing_idx]]=xorBlocks(from_garbler[output_text[out_idx]], label[input_b[out_idx]] );
-        }        
+            one_hot_outer_temp[missing_idx][out_idx]=xorBlocks(from_garbler[output_text[out_idx]], label[input_b[out_idx]] );
+            for(int output_n_idx=0;output_n_idx<truth_table.size();output_n_idx++){
+                block temp=zero_block();
+                for (int leaf_idx=0; leaf_idx<last_level_leaves.size(); leaf_idx++) {
+                    if (truth_table[output_n_idx][leaf_idx]) {
+                        temp=xorBlocks(temp, one_hot_outer_temp[leaf_idx][out_idx]);
+                    }
+                }
+                label[output[out_idx][output_n_idx]]=temp;
+            }
+        }
+
     }
 };
