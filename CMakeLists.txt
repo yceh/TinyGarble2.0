@@ -46,6 +46,7 @@ add_exec(readCircuitFile)
 add_exec(LeNet)
 add_exec(millionaire)
 add_exec(onehot_garble_test)
+add_exec(wrapped_test)
 
 configure_file("tinygarble/TinyGarble_config.h.in" "tinygarble/TinyGarble_config.h" @ONLY)
 

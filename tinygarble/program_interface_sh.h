@@ -544,6 +544,15 @@ class TinyGarblePI_SH{
 		uint64_t cycles = 1, repeat = 1, output_mode = 2;
 		sequential_2pc_exec_sh(twopc, b_x, a_x, nullptr, y_x, party, io, &cf, cycles, repeat, output_mode);
 	}
+	void outer_product(block*& y_x, block* a_x, block* b_x, uint64_t bit_width_a, uint64_t bit_width_b){
+		General_One_Hot_Outer_Prod func;
+		int temp1=0;
+		int temp2=0;
+		y_x=TG_int(bit_width_a*bit_width_b);
+		func.allocate_idx(bit_width_a, bit_width_b, temp1, temp2);
+		sequential_2pc_exec_sh(twopc,b_x,a_x,nullptr,y_x,party,io,func);
+
+	}
 	void mult(block*& y_x, block* a_x, block* b_x, uint64_t bit_width){
 		mult(y_x, a_x, b_x, bit_width, bit_width);
 	}

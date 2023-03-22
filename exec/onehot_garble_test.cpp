@@ -78,16 +78,18 @@ int main(int argc, char** argv) {
 	General_One_Hot_Outer_Prod dut;
 
 	int wire_label_idx=0, garbler_to_eval_idx=0;
-	int a_bw=3;	
+	int a_bw=4;	
 	//dut.truth_table=identity_truth_table(a_bw);
-	dut.allocate_idx(a_bw, 2, wire_label_idx, garbler_to_eval_idx);
+	dut.allocate_idx(a_bw, 4, wire_label_idx, garbler_to_eval_idx);
 	block* eval_blocks=new block[wire_label_idx];
 	block* garble_blocks=new block[wire_label_idx];
 	block* garbler_to_eval=new block[garbler_to_eval_idx];
 
-	for (int test_a=0; test_a<8; test_a++) {
+	run(eval_blocks, garble_blocks, garbler_to_eval, hash_provider, dut, 2, 3);
+	/*
+	for (int test_a=0; test_a<16; test_a++) {
 		bool mismatch=false;
-		for (int test_b=0; test_b<4; test_b++) {
+		for (int test_b=0; test_b<16; test_b++) {
 			printf("\n\n----------------------------testing a: %d b: %d--------------------------\n",test_a,test_b);
 			if(run(eval_blocks, garble_blocks, garbler_to_eval, hash_provider, dut, test_a, test_b)){
 				mismatch=true;
@@ -97,6 +99,6 @@ int main(int argc, char** argv) {
 		if(mismatch){
 			break;
 		}
-	}
+	}*/
 	return 0;
 }

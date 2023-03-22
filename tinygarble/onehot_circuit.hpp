@@ -1,3 +1,5 @@
+#ifndef ONE_HOT_CIRCUIT
+#define ONE_HOT_CIRCUIT
 #include "emp-tool/utils/block.h"
 #include <csignal>
 #include <cstddef>
@@ -245,6 +247,8 @@ struct General_One_Hot_Outer_Prod{
     std::vector<std::vector<size_t>> output;//[|b|][n]
     One_Hot_Garble a_alp_outer_b;
     One_Hot_Garble b_beta_outer_alph;
+    size_t total_label_cnt;
+    size_t total_comm_cnt;
     void copy_label(block* label,const std::vector<size_t>& src_idx,const std::vector<size_t>& dst_idx){
         if (src_idx.size()!=dst_idx.size()) {
             raise(SIGTRAP);
@@ -292,6 +296,8 @@ struct General_One_Hot_Outer_Prod{
         b_beta_outer_alph.truth_table=identity_truth_table(b_bw);
         a_alp_outer_b.allocate_idx(a_bw, b_bw, next_label_idx, next_text_ex_idx);
         b_beta_outer_alph.allocate_idx(b_bw, a_bw, next_label_idx, next_text_ex_idx);
+        total_label_cnt=next_label_idx;
+        total_comm_cnt=next_text_ex_idx;
     }
     void garble(block* label, block* to_evaluator,const SequentialC2PC_SH& hash_provider){
         //The evalulator is going to take its share of a as if it is its share of a xor alpha
@@ -347,3 +353,4 @@ struct General_One_Hot_Outer_Prod{
     }
 
 };
+#endif

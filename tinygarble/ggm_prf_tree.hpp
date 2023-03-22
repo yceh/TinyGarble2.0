@@ -1,3 +1,5 @@
+#ifndef GGM
+#define GGM
 #include "sequential_2pc_sh.h"
 #include <cstdio>
 typedef std::vector<std::vector<block>> GGM_Hash_Tree_t;
@@ -32,3 +34,4 @@ void compute_ggm_prf(block root, GGM_Hash_Tree_t& out, int level,const Sequentia
     }
 }
 
+#endif
