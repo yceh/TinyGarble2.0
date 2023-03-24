@@ -19,7 +19,7 @@ set(TINYGARBLE_LIBRARIES ${TINYGARBLE_LIBRARIES} ${Boost_LIBRARIES})
 set(TINYGARBLE_DIRS ${TINYGARBLE_DIR} ${Boost_INCLUDE_DIRS})
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0 -fconcepts")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -fsanitize=address -fconcepts")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -fconcepts")
 
 
 # Remove warnings specifically for this project

@@ -25,6 +25,8 @@ class SequentialC2PC_SH { public:
 
 	PRG prg;
 	PRP prp;
+
+	int hash_cnt;
 	
 	block (*GT)[2];
 	
