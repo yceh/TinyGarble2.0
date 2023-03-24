@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <csignal>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -11,6 +12,8 @@
 #include "exec/unit_test.h"
 #include "tinygarble/program_interface_sh.h"
 #include "tinygarble/TinyGarble_config.h"
+#include <sys/time.h>
+#include <sys/resource.h>
 
 using namespace std;
 namespace po = boost::program_options;
@@ -19,7 +22,17 @@ struct stats{
 	size_t nhashs;
 	size_t ncomm;
 	std::vector<size_t> time;	
+	std::vector<size_t> utime;	
 };
+static long getcputime(){
+	struct rusage usage;
+	auto ret=getrusage(RUSAGE_SELF, &usage);
+	//fprintf(stderr, "%d\n",ret);
+	if(ret!=0){
+		raise(SIGTRAP);
+	}
+	return usage.ru_utime.tv_sec*1E6+usage.ru_utime.tv_usec;
+}
 void millionaire(int bit_width,TinyGarblePI_SH* TGPI, stats& baseline,stats& onehot){
 
     int64_t a = 0, b = 0;
@@ -40,9 +53,12 @@ void millionaire(int bit_width,TinyGarblePI_SH* TGPI, stats& baseline,stats& one
 
     TGPI->retrieve_input_labels(a_x, ALICE, bit_width);
     TGPI->retrieve_input_labels(b_x, BOB, bit_width);
+	
+	long cputime_start=getcputime();
 	auto baseline_start=std::chrono::high_resolution_clock::now();
 	TGPI->mult(res_ref,a_x,b_x,bit_width,bit_width);
 	auto baseline_end=std::chrono::high_resolution_clock::now();
+	baseline.utime.emplace_back(getcputime()-cputime_start);
 	auto n_microsecond=std::chrono::duration_cast<std::chrono::microseconds>(baseline_end-baseline_start).count();
 	baseline.ncomm=TGPI->io->send_count;
 	baseline.nhashs= TGPI->twopc->prp.nhashes;
@@ -53,6 +69,7 @@ void millionaire(int bit_width,TinyGarblePI_SH* TGPI, stats& baseline,stats& one
 	auto res_ref_rev=TGPI->reveal(res_ref,2*bit_width,false);
     //printf("ref:%d\n",res_ref_rev);
     
+	cputime_start=getcputime();
 	auto onehot_start=std::chrono::high_resolution_clock::now();
 	block* res_x;
     TGPI->outer_product(res_x, a_x, b_x, bit_width,bit_width);
@@ -72,15 +89,16 @@ void millionaire(int bit_width,TinyGarblePI_SH* TGPI, stats& baseline,stats& one
 
 	auto onehot_end=std::chrono::high_resolution_clock::now();
 
-    auto res = TGPI->reveal(acc, out_bw, false);
     //printf("%ld\n",res);
 	auto onehot_microsecond=std::chrono::duration_cast<std::chrono::microseconds>(onehot_end-onehot_start).count();
+	onehot.utime.push_back(getcputime()-cputime_start);
 	onehot.ncomm=TGPI->io->send_count;
 	onehot.nhashs= TGPI->twopc->prp.nhashes;
 	onehot.time.emplace_back(onehot_microsecond);
 	TGPI->io->send_count=0;
 	TGPI->io->recv_count=0;
 	TGPI->twopc->prp.nhashes=0;
+    auto res = TGPI->reveal(acc, out_bw, false);
 	
 	TGPI->clear_TG_int(a_x);
 	TGPI->clear_TG_int(b_x);
@@ -125,21 +143,28 @@ int main(int argc, char** argv) {
 	//unit_test(TGPI);
 	io->flush();
 	fprintf(stderr, "bit_width\tbaseline_time\tbaseline_comm_bytes\tonehot_time\tonehot_comm_bytes\tonehot_time\t\n");
-	for (int bitsize:{2,4,8,12,16}){
+	for (int bitsize:{2,4,6,7,8,9,10,12,16}){
 		stats baseline,onehot;
 		for (int iter=0; iter<21; iter++) {
 			millionaire(bitsize, TGPI, baseline, onehot);
 		}
 		std::sort(baseline.time.begin(),baseline.time.end());
+		std::sort(baseline.utime.begin(),baseline.utime.end());
 		std::sort(onehot.time.begin(),onehot.time.end());
+		std::sort(onehot.utime.begin(),onehot.utime.end());
 		double base_line_sum=0;
 		double one_hot_sum=0;
+		double one_hot_usum=0;
+		double base_line_usum=0;
 		for (int idx=5; idx<15; idx++) {
 			base_line_sum+=baseline.time[idx];
+			base_line_usum+=baseline.utime[idx];
 			one_hot_sum+=onehot.time[idx];
+			one_hot_usum+=onehot.utime[idx];
 		}
-		fprintf(stderr, "%d\t%f\t%f\t%zu\t%zu\t%zu\t%zu\n", 
-			bitsize,base_line_sum/10,one_hot_sum/10,baseline.ncomm,onehot.ncomm,baseline.nhashs
+
+		fprintf(stderr, "%d\t%f\t%f\t%f\t%f\t%zu\t%zu\t%zu\t%zu\n", 
+			bitsize,base_line_sum/10,one_hot_sum/10,base_line_usum/10,one_hot_usum/10,baseline.ncomm,onehot.ncomm,baseline.nhashs
 			,onehot.nhashs);
 	}
 	
