@@ -6,7 +6,13 @@ Following binaries are executables which should directly run.
 bin/onehot_mult_benchmark  will execute timing benchmark.
 
 bin/onehot_mult_space_bench and baseline_mult_space_bench take -b argument for bit width and will print memory usage in kb.
-For example, running onehot_mult_space_bench -k1 -b 4& onehot_mult_space_bench -k 2 -b 4 will benchmark memory requirement of 4bit * 4bit via one hot garbling.
+
+For example, running 
+```
+onehot_mult_space_bench -k 1 -b 4& 
+onehot_mult_space_bench -k 2 -b 4 
+```
+will benchmark memory requirement of 4bit * 4bit via one hot garbling.
 
 
 
