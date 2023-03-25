@@ -1,5 +1,13 @@
+# ECE 268 project 
+
+Following binaries are executables which should directly run.
+
 bin/onehot_mult_benchmark  will execute timing benchmark.
+
 bin/onehot_mult_space_bench and baseline_mult_space_bench take -d argument for bit width and will print memory usage in kb.
+
+
+
 
 
 
