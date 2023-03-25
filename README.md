@@ -1,3 +1,8 @@
+bin/onehot_mult_benchmark  will execute timing benchmark.
+bin/onehot_mult_space_bench and baseline_mult_space_bench take -d argument for bit width and will print memory usage in kb.
+
+
+
 # TinyGarble 2.0
 
 ### Smart, efficient and scalable Yao's Garbled Circuit (GC)
