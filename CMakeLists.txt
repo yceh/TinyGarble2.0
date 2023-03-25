@@ -46,7 +46,10 @@ add_exec(readCircuitFile)
 add_exec(LeNet)
 add_exec(millionaire)
 add_exec(onehot_garble_test)
-add_exec(wrapped_test)
+add_exec(onehot_mult_benchmark)
+add_exec(onehot_mult_space_bench)
+add_exec(baseline_mult_space_bench)
+add_exec(hash_rate)
 
 configure_file("tinygarble/TinyGarble_config.h.in" "tinygarble/TinyGarble_config.h" @ONLY)
 
